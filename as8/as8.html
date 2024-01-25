@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Assignment 8</title>
+  </head>
+
+  <body>
+    <script id="ADSVertexShader" type="not-js">
+      attribute vec3 vPosition;
+      attribute vec3 vNormal;
+      attribute vec3 vColor;
+      varying vec3 fPosition;
+      varying vec3 fColor;
+      varying vec3 fNormal;
+      uniform mat4 uMV;
+      uniform mat4 uMVP;
+
+      void main(void) {
+        gl_Position = uMVP * vec4(vPosition, 1.0);
+        fPosition = (uMV * vec4(vPosition, 1.0)).xyz; // In camera coordinates
+        fColor = vColor;
+        fNormal = vNormal;                            // In local coordinates
+     }
+    </script>
+    <script id="ADSFragmentShader" type="not-js">
+      precision highp float;
+      varying vec3 fPosition;
+      varying vec3 fColor;
+      varying vec3 fNormal;
+      uniform mat4 uMV;
+      uniform mat3 uMVn;
+      uniform vec3 lightKDir;
+      uniform vec3 lightFDir;
+      uniform vec3 lightBDir;
+      uniform float lightKIntensity;
+      uniform float lightFIntensity;
+      uniform float lightBIntensity;
+      uniform vec3 lightKCol;
+      uniform vec3 lightFCol;
+      uniform vec3 lightBCol;
+
+      const vec3  lightV    = vec3(0.0,-0.3,1.0);
+      const float lightI    = 10000.0;               // only for diffuse component
+      const float ambientC  = 0.15;
+      const float diffuseC  = 0.5;
+      const float specularC = 0.8;
+      const float specularE = 32.0;
+      const vec3  lightCol  = vec3(1.0,1.0,1.0);
+      
+      vec2 blinnPhongDir(vec3 lightDir, vec3 n, float lightInt, float Ka,
+        float Kd, float Ks, float shininess) {
+        vec3 s = normalize(lightDir);
+        vec3 v = normalize(-fPosition);
+        vec3 h = normalize(v+s);
+        float diffuse = Ka + Kd * lightInt * max(0.0, dot(n, s));
+        float spec =  Ks * pow(max(0.0, dot(n,h)), shininess);
+        return vec2(diffuse, spec);
+      }
+
+      void main(void) {
+        vec3 n = normalize(uMVn * fNormal);
+
+        vec3 ColorK  = blinnPhongDir(lightKDir,n,0.0   ,0.0,     0.0,     specularC,specularE).y*lightKCol;
+        vec3 ColorF  = blinnPhongDir(lightFDir,n,0.0   ,0.0,     0.0,     specularC,specularE).y*lightFCol;
+        vec3 ColorB  = blinnPhongDir(lightBDir,n,0.0   ,0.0,     0.0,     specularC,specularE).y*lightBCol;
+        vec3 ColorAD = blinnPhongDir(lightV,n,lightI,ambientC,diffuseC,0.0,      1.0      ).x*fColor;
+        vec3 ColorADK = blinnPhongDir(lightKDir,n,lightI,ambientC,diffuseC,0.0,      1.0      ).x*fColor;
+        vec3 ColorADF = blinnPhongDir(lightFDir,n,lightI,ambientC,diffuseC,0.0,      1.0      ).x*fColor;
+        vec3 ColorADB = blinnPhongDir(lightBDir,n,lightI,ambientC,diffuseC,0.0,      1.0      ).x*fColor;
+        gl_FragColor = vec4(ColorADK+ColorADF+ColorADB+ColorK+ColorF+ColorB,1.0);
+      }
+    </script>
+    <script id="ADVertexShader" type="not-js">
+      attribute vec3 vPosition;
+      attribute vec3 vNormal;
+      attribute vec3 vColor;
+
+      uniform mat4 uMV;
+      uniform mat3 uMVn;
+      uniform mat4 uMVP;
+
+      varying vec3 fPosition;
+      varying vec3 fNormal;
+      varying vec3 fColor;
+
+      void main() {
+          fPosition = (uMV * vec4(vPosition, 1.0)).xyz;
+          fNormal = normalize(uMVn * vNormal);
+          fColor = vColor;
+          gl_Position = uMVP * vec4(vPosition, 1.0);
+      }
+    </script>
+    <script id="ADFragmentShader" type="not-js">
+      precision mediump float;
+
+      varying vec3 fPosition;
+      varying vec3 fNormal;
+      varying vec3 fColor;
+
+      uniform vec3 lightKDir;
+      uniform vec3 lightFDir;
+      uniform vec3 lightBDir;
+      uniform float lightKIntensity;
+      uniform float lightFIntensity;
+      uniform float lightBIntensity;
+
+      
+      void main() {
+          float Ka = 0.2;
+          float Kd = 0.8;
+          vec3 normal = normalize(fNormal);
+          float diffuseK = Ka + Kd * lightKIntensity * max(0.0, dot(normal, lightKDir));
+          float diffuseF = Ka + Kd * lightFIntensity * max(0.0, dot(normal, lightFDir));
+          float diffuseB = Ka + Kd * lightBIntensity * max(0.0, dot(normal, lightBDir));
+          gl_FragColor = vec4(fColor * diffuseK + fColor * diffuseF + fColor * diffuseB, 1.0);
+      }
+      
+    </script>
+    <script id="TVertexShader" type="not-js">
+      attribute vec3 vPosition;
+      attribute vec3 vNormal;
+      attribute vec3 vColor;
+      attribute vec2 vTexCoord;
+      varying vec3 fPosition;
+      varying vec3 fColor;
+      varying vec3 fNormal;
+      varying vec2 fTexCoord;
+      uniform mat4 uMV;
+      uniform mat4 uMVP;
+
+      void main(void) {
+        gl_Position = uMVP * vec4(vPosition, 1.0);
+        fPosition = (uMV * vec4(vPosition, 1.0)).xyz; // In camera coordinates
+        fColor = vColor;
+        fNormal = vNormal;                            // In local coordinates
+        fTexCoord = vTexCoord;
+     }
+    </script>
+    <script id="ADSTFragmentShader" type="not-js">
+      precision highp float;
+      varying vec3 fPosition;
+      varying vec3 fColor;
+      varying vec3 fNormal;
+      varying vec2 fTexCoord;
+      uniform mat4 uMV;
+      uniform mat3 uMVn;
+      uniform vec3 lightKDir;
+      uniform vec3 lightFDir;
+      uniform vec3 lightBDir;
+      uniform float lightKIntensity;
+      uniform float lightFIntensity;
+      uniform float lightBIntensity;
+      uniform vec3 lightKCol;
+      uniform vec3 lightFCol;
+      uniform vec3 lightBCol;
+      uniform sampler2D texSampler1;
+      uniform sampler2D texSampler2;
+
+      const vec3  lightV    = vec3(0.0,-0.3,1.0);
+      const float lightI    = 0.1;               // only for diffuse component
+      const float ambientC  = 0.15;
+      const float diffuseC  = 0.5;
+      const float specularC = 0.8;
+      const float specularE = 32.0;
+      const vec3  lightCol  = vec3(1.0,1.0,1.0);
+      
+      vec2 blinnPhongDir(vec3 lightDir, vec3 n, float lightInt, float Ka,
+        float Kd, float Ks, float shininess) {
+        vec3 s = normalize(lightDir);
+        vec3 v = normalize(-fPosition);
+        vec3 h = normalize(v+s);
+        float diffuse = Ka + Kd * lightInt * max(0.0, dot(n, s));
+        float spec =  Ks * pow(max(0.0, dot(n,h)), shininess);
+        return vec2(diffuse, spec);
+      }
+
+      void main(void) {
+        vec3 dNormal=texture2D(texSampler2,fTexCoord).xyz;
+        vec3 n_perturbed = normalize(dNormal+fNormal);
+        vec3 n = normalize(uMVn * n_perturbed);
+        vec3 ColorK  = blinnPhongDir(lightKDir,n,0.0   ,0.0,     0.0,     specularC,specularE).y*lightKCol;
+        vec3 ColorF  = blinnPhongDir(lightFDir,n,0.0   ,0.0,     0.0,     specularC,specularE).y*lightFCol;
+        vec3 ColorB  = blinnPhongDir(lightBDir,n,0.0   ,0.0,     0.0,     specularC,specularE).y*lightBCol;
+        vec3 ColorAD = blinnPhongDir(lightV,n,lightI,ambientC,diffuseC,0.0,      1.0      ).x*fColor;
+        vec3 ColorADK = blinnPhongDir(lightKDir,n,lightI,ambientC,diffuseC,0.0,      1.0      ).x*fColor;
+        vec3 ColorADF = blinnPhongDir(lightFDir,n,lightI,ambientC,diffuseC,0.0,      1.0      ).x*fColor;
+        vec3 ColorADB = blinnPhongDir(lightBDir,n,lightI,ambientC,diffuseC,0.0,      1.0      ).x*fColor;
+        vec4 texColor = texture2D(texSampler1,fTexCoord);
+        gl_FragColor = vec4(ColorADK+ColorADF+ColorADB,1.0)+texColor;
+      }
+    </script>
+    <h2>Director Simulator</h2>
+    <h3>Inspired by <em>2001: A Space Odyssey</em>, <a href="https://www.youtube.com/watch?v=cHWs3c3YNs4&ab_channel=urffue">the beginning sequence depicting the apes</a>.</h3>
+    <h3>If you were Stanley Kubrick, please select the optimal lighting, staging, acting and camera movement to direct this scene.</h3>
+    <div style="display: flex; align-items: center;">
+    <div style="display: flex; flex-direction: column;">
+    <canvas id="mycanvas" width="800" height="600"></canvas>
+    <h3>For the monolith, I used one pair of shaders with ambient+diffuse+specular reflections to make it appear shiny. For other parts, another pair of shaders with ambient+diffuse is used to make it appear soft or dull.</h3>
+    <h3>For textures, I didn't use any textures for HW7. So for this HW, I added two types of textures in total. All the stones are wrapped by a stone_diff texture as surface color, and a stone_nor texture as normal mapping. For all rock grounds, they also have one color texture and one normal mapping texture. It might take longer to render all objects in my scene in your computer although I have left a 1000ms time out, so feel free to manipulate the sliders to force the programs to render everything.</h3>
+    <h3><a href="https://free3d.com/3d-model/spider-monkey-v1--803509.html">Monkey</a>, <a href="https://free3d.com/3d-model/low-poly-rock-4631.html">Stone</a>, <a href="https://free3d.com/3d-model/rock-wall-78153.html">Rockwall</a> are all downloaded from Free3D then edited in blender by myself.</h3>
+    </div>
+    <div style="display: flex; flex-direction: column;">
+    <h3>Camera Movement</h3>
+    <p>&lt;-- X --&gt;</p>
+    <input id="cameraX" type="range" min="-500" max="500"/>
+    <p>&lt;-- Y --&gt;</p>
+    <input id="cameraY" type="range" min="-500" max="500"/>
+    <p>&lt;-- Z --&gt;</p>
+    <input id="cameraZ" type="range" min="-750" max="750"/>
+    <p>L &lt;-- Pan --&gt; R</p>
+    <input id="cameraPan" type="range" min="-100" max="100"/>
+    <p>D &lt;-- Tilt --&gt; U</p>
+    <input id="cameraTilt" type="range" min="-100" max="100"/>
+    <p>L &lt;-- Dutch Angle --&gt; R</p>
+    <input id="cameraDA" type="range" min="-25" max="25"/>
+    <p>O &lt;-- Zoom --&gt; I</p>
+    <input id="cameraZoom" type="range" min="-100" max="100"/>
+    </div>
+    <div style="display: flex; flex-direction: column;">
+    <h3>Lighting</h3>
+    <h4>Key Light</h4>
+    <p>&lt;-- X --&gt;</p>
+    <input id="lightKX" type="range" min="-100" max="100" />
+    <p>&lt;-- Y --&gt;</p>
+    <input id="lightKY" type="range" min="-100" max="100" />
+    <p>&lt;-- Z --&gt;</p>
+    <input id="lightKZ" type="range" min="-100" max="100" />
+    <p>Week &lt;-- Intensity --&gt; Strong</p>
+    <input id="lightKI" type="range" min="0" max="100" />
+    <p>Yellow &lt;-- Color --&gt; White</p>
+    <input id="lightKC" type="range" min="0" max="100" />
+    <h4>Fill Light</h4>
+    <p>&lt;-- X --&gt;</p>
+    <input id="lightFX" type="range" min="-100" max="100" />
+    <p>&lt;-- Y --&gt;</p>
+    <input id="lightFY" type="range" min="-100" max="100" />
+    <p>&lt;-- Z --&gt;</p>
+    <input id="lightFZ" type="range" min="-100" max="100" />
+    <p>Week &lt;-- Intensity --&gt; Strong</p>
+    <input id="lightFI" type="range" min="0" max="100" />
+    <p>Yellow &lt;-- Color --&gt; White</p>
+    <input id="lightFC" type="range" min="0" max="100" />
+    <h4>Back Light</h4>
+    <p>&lt;-- X --&gt;</p>
+    <input id="lightBX" type="range" min="-100" max="100" />
+    <p>&lt;-- Y --&gt;</p>
+    <input id="lightBY" type="range" min="-100" max="100" />
+    <p>&lt;-- Z --&gt;</p>
+    <input id="lightBZ" type="range" min="-100" max="100" />
+    <p>Week &lt;-- Intensity --&gt; Strong</p>
+    <input id="lightBI" type="range" min="0" max="100" />
+    <p>Yellow &lt;-- Color --&gt; White</p>
+    <input id="lightBC" type="range" min="0" max="100" />
+    </div>
+    <div style="display: flex; flex-direction: column;">
+    <h3>Acting</h3>
+    <h4>Monkey</h4>
+    <p>&lt;-- Trajectory --&gt;</p>
+    <input id="monkeyT" type="range" min="0" max="400"/>
+    <p>L &lt;-- Horizontal Turn --&gt; R</p>
+    <input id="monkeyHT" type="range" min="-100" max="100"/>
+    <p>D &lt;-- Vertical Turn --&gt; U</p>
+    <input id="monkeyVT" type="range" min="-100" max="100"/>
+    <p>B &lt;-- Lean --&gt; F</p>
+    <input id="monkeyLean" type="range" min="-100" max="100"/>
+    <p>&lt;-- Head --&gt;</p>
+    <input id="monkeyHead" type="range" min="-5" max="5"/>
+    <p>&lt;-- LArm --&gt;</p>
+    <input id="monkeyLArm" type="range" min="-5" max="5"/>
+    <p>&lt;-- LLeg --&gt;</p>
+    <input id="monkeyLLeg" type="range" min="-5" max="5"/>
+    <p>&lt;-- RArm --&gt;</p>
+    <input id="monkeyRArm" type="range" min="-5" max="5"/>
+    <p>&lt;-- RLeg --&gt;</p>
+    <input id="monkeyRLeg" type="range" min="-5" max="5"/>
+    <p>&lt;-- Tail --&gt;</p>
+    <input id="monkeyTail" type="range" min="-5" max="5"/>
+    </div>
+    <div style="display: flex; flex-direction: column;">
+    <h3>Staging</h3>
+    <h4>Controlling Point 1</h4>
+    <p>&lt;-- X --&gt;</p>
+    <input id="P1X" type="range" min="-200" max="200"/>
+    <p>&lt;-- Y --&gt;</p>
+    <input id="P1Y" type="range" min="-200" max="200"/>
+    <p>&lt;-- Z --&gt;</p>
+    <input id="P1Z" type="range" min="-200" max="200"/>
+    <h4>Controlling Point 2</h4>
+    <p>&lt;-- X --&gt;</p>
+    <input id="P2X" type="range" min="-200" max="200"/>
+    <p>&lt;-- Y --&gt;</p>
+    <input id="P2Y" type="range" min="-200" max="200"/>
+    <p>&lt;-- Z --&gt;</p>
+    <input id="P2Z" type="range" min="-200" max="200"/>
+    <h4>Controlling Point 3</h4>
+    <p>&lt;-- X --&gt;</p>
+    <input id="P3X" type="range" min="-200" max="200"/>
+    <p>&lt;-- Y --&gt;</p>
+    <input id="P3Y" type="range" min="-200" max="200"/>
+    <p>&lt;-- Z --&gt;</p>
+    <input id="P3Z" type="range" min="-200" max="200"/>
+    <h4>Controlling Point 4</h4>
+    <p>&lt;-- X --&gt;</p>
+    <input id="P4X" type="range" min="-200" max="200"/>
+    <p>&lt;-- Y --&gt;</p>
+    <input id="P4Y" type="range" min="-200" max="200"/>
+    <p>&lt;-- Z --&gt;</p>
+    <input id="P4Z" type="range" min="-200" max="200"/>
+    </div>
+    <script type="text/javascript" src="gl-matrix-min.js"></script>
+    <script src="main.js" id="module"></script>
+    <script src="helpers.js"></script>
+    <script src="cube.js"></script>
+    <script src="monolith.js"></script>
+    <script src="rockwall.js"></script>
+    <script src="monkeyBody.js"></script>
+    <script src="monkeyFace.js"></script>
+    <script src="monkeyHead.js"></script>
+    <script src="monkeyLArm.js"></script>
+    <script src="monkeyLLeg.js"></script>
+    <script src="monkeyRArm.js"></script>
+    <script src="monkeyRLeg.js"></script>
+    <script src="monkeyTail.js"></script>
+    <script src="stone.js"></script>
+    <script src="stone_diff.js"></script>
+    <script src="stone_nor.js"></script>
+    <script src="rockwall_diff.js"></script>
+    <script src="rockwall_nor.js"></script>
+    <script src="monkey_diff.js"></script>
+    <script src="monkey_nor.js"></script>
+  </body>
+</html>
